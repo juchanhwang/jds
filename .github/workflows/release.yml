@@ -64,7 +64,6 @@ jobs:
           tag_name: "v${{ env.VERSION }}"
           generate_release_notes: true
 
-      # ⭐️ 수정된 부분 3: NODE_AUTH_TOKEN 환경 변수를 명시적으로 전달합니다.
       - name: Publish to npm
         run: pnpm publish --no-git-checks
         env:
