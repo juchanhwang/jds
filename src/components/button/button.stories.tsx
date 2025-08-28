@@ -99,7 +99,7 @@ export const Loading: Story = {
   args: {
     ...Primary.args,
     className: primaryClasses,
-    isDisabled: true, // 로딩 중에는 비활성화
+    disabled: true,
   },
 };
 
