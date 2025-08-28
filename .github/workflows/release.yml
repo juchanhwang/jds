@@ -1,68 +1,56 @@
-# 워크플로우의 이름
 name: Release and Publish
 
-# 실행 조건: 'release' 브랜치에 푸시가 발생했을 때
 on:
   push:
     branches:
       - release
 
-# 동시에 하나의 워크플로우만 실행되도록 보장
 concurrency: ${{ github.workflow }}-${{ github.ref }}
 
-# 실행할 작업(Job) 정의
 jobs:
   release:
-    # 실행 환경
     runs-on: ubuntu-latest
-    # 위 1단계에서 설정한 쓰기 권한을 작업에 부여
     permissions:
-      contents: write # ⭐️ git push 및 release 생성을 위한 필수 권한
+      contents: write
       issues: write
       pull-requests: write
 
     steps:
-      # 1. 레포지토리 코드를 체크아웃
-      # fetch-depth: 0은 모든 git 히스토리를 가져와 릴리즈 노트 생성에 사용
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # 2. Node.js 및 pnpm 환경 설정
-      - name: Set up Node.js and pnpm
+      - name: Set up pnpm
         uses: pnpm/action-setup@v4
         with:
-          node-version: '20.x'
           version: latest
 
-      # 3. 의존성 설치
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          registry-url: 'https://registry.npmjs.org' # npm 배포를 위한 필수 설정
+          cache: 'pnpm' # pnpm 캐싱 활성화
+
       - name: Install dependencies
         run: pnpm install
 
-      # 4. Git 사용자 정보 설정
-      # 버전업 커밋을 위해 Actions Bot의 이름과 이메일을 설정
       - name: Configure Git
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      # 5. ⭐️ 마이너 버전 자동 업데이트
-      # --no-git-tag-version: npm이 자동으로 커밋/태그하는 것을 방지
       - name: Bump minor version
         run: pnpm version minor --no-git-tag-version
 
-      # 6. ⭐️ 업데이트된 버전 정보 추출
-      # package.json에서 업데이트된 버전 번호를 읽어와 환경 변수로 저장
       - name: Get new version
         id: get_version
         run: echo "VERSION=$(node -p "require('./package.json').version")" >> $GITHUB_ENV
 
-      # 7. 프로젝트 빌드
       - name: Build package
         run: pnpm build
 
-      # 8. ⭐️ package.json 변경사항 커밋 및 태그 생성, 푸시
       - name: Commit, Tag and Push changes
         run: |
           git add package.json pnpm-lock.yaml
@@ -70,16 +58,14 @@ jobs:
           git tag -a "v${{ env.VERSION }}" -m "Release v${{ env.VERSION }}"
           git push origin HEAD:${{ github.ref_name }} --follow-tags
 
-      # 9. ⭐️ GitHub Release 자동 생성
-      # 이전 태그와 현재 태그 사이의 커밋 메시지를 기반으로 릴리즈 노트를 자동 생성
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: "v${{ env.VERSION }}"
-          generate_release_notes: true # 릴리즈 노트 자동 생성
+          generate_release_notes: true
 
-      # 10. npm에 배포
+      # ⭐️ 수정된 부분 3: NODE_AUTH_TOKEN 환경 변수를 명시적으로 전달합니다.
       - name: Publish to npm
         run: pnpm publish --no-git-checks
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }} # npm 토큰 시크릿
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -2,6 +2,19 @@
   "name": "jds",
   "version": "0.0.1",
   "type": "module",
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/jds.umd.cjs",
+  "module": "./dist/jds.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/jds.js",
+      "require": "./dist/jds.umd.cjs"
+    }
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
